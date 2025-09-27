@@ -16,6 +16,7 @@ SCRIPTS_DIR="${SCRIPTS_DIR:-$HOME/pair/scripts}"
 CODEX_MODE="shell"                # shell | stub | cmd
 CODEX_CMD=""
 CODEX_CD="$PWD"
+ATTACH=1
 
 usage() {
   cat <<EOF
@@ -32,6 +33,7 @@ Options:
   -c, --cmd 'COMMAND'        command to run in CLI pane
       --demo                 demo loop if --cmd empty
   -b, --backend NAME         auto | rotatelogs | python (default: auto)
+      --no-attach            leave tmux session detached
   -h, --help                 show this help
 
 Examples:
@@ -62,6 +64,7 @@ while [[ $# -gt 0 ]]; do
     --codex-cmd) CODEX_MODE="cmd"; CODEX_CMD="$2"; shift 2 ;;
     --codex-cd) CODEX_CD="$2"; shift 2 ;;
     --codex-stub) CODEX_MODE="stub"; shift ;;
+    --no-attach) ATTACH=0; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1"; usage; exit 1 ;;
   esac
@@ -280,26 +283,24 @@ start_session() {
     tmux new-window -t "$SESSION" -n "Advisor Panel"
     tmux split-window -v -t "$SESSION":"Advisor Panel"
 
-    tmux set-environment -t "$SESSION" STREAM_DIR "$STREAM_DIR"
-    tmux set-environment -t "$SESSION" OUT_DIR "$OUT_DIR"
-    tmux set-environment -t "$SESSION" LATEST "${LATEST:-latest.log}"
-
+    printf -v env_prefix 'export STREAM_DIR=%q; export OUT_DIR=%q; export LATEST=%q;' \
+      "$STREAM_DIR" "$OUT_DIR" "${LATEST:-latest.log}"
     printf -v codex_cd_cmd 'cd %q' "$CODEX_CD"
 
     case "$CODEX_MODE" in
       stub)
         ensure_codex
         tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Stub"
-        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$SCRIPTS_DIR/codex_reader.py" C-m
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$env_prefix $SCRIPTS_DIR/codex_reader.py" C-m
         ;;
       cmd)
         tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Command"
-        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$codex_cd_cmd" C-m
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$env_prefix $codex_cd_cmd" C-m
         tmux send-keys -t "$SESSION":"Advisor Panel".0 "$CODEX_CMD" C-m
         ;;
       *)
         tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Advisor Console"
-        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$codex_cd_cmd" C-m
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$env_prefix $codex_cd_cmd" C-m
         ;;
     esac
 
@@ -312,7 +313,11 @@ start_session() {
   echo "Chunks -> $STREAM_DIR  (interval ${INTERVAL}s, keep $KEEP)"
   [[ -n "$LATEST" ]] && echo "Latest symlink: $STREAM_DIR/$LATEST"
   echo "Spec: $STREAM_DIR/SPEC.md"
-  tmux attach -t "$SESSION"
+  if [[ ${PAIRSTREAM_NO_ATTACH:-0} != 0 || $ATTACH -eq 0 ]]; then
+    echo "Session '$SESSION' left detached."
+  else
+    tmux attach -t "$SESSION"
+  fi
 }
 
 stop_session() {

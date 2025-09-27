@@ -15,6 +15,7 @@ A lightweight tmux-based pairing environment for collecting CLI output into time
 - **Manuals as code blocks:** English and Finnish guides are single copy/paste blocks covering setup, lifecycle, modes, backends, rotation, error paths, and cleanup.
 - **Spec surfaced in runtime:** `pair_stream.sh` writes `SPEC.md` into the stream directory on each start so agents can read the stream specification inline.
 - **Advisor flexibility:** Advanced mode defaults to an interactive Codex pane; use `--codex-cmd "<command>"` to auto-run your CLI or `--codex-stub` to load the built-in regex helper, and `--codex-cd PATH` to change the working directory before launch.
+- **Automation ready:** The `--no-attach` flag leaves sessions detached so the included `tests/run_manual_tests.sh` can exercise the full workflow headlessly.
 
 ## Not Yet Implemented / TODO
 
@@ -43,6 +44,16 @@ Need an automated Codex run? Supply your command via `--codex-cmd` (and optional
 ```
 
 Without `--codex-cmd`, the advisor pane stays interactive so you can start Codex manually; `--codex-stub` restores the built-in regex helper.
+
+### Automated Checks
+
+You can mirror the manual walkthrough with a scripted smoke test:
+
+```bash
+./tests/run_manual_tests.sh
+```
+
+The helper provisions a temporary workspace, runs through basic/split/advanced modes, verifies rotation limits, and confirms the Python backend keeps canonical filenames. All tmux sessions are left detached via `--no-attach` so the script can run in CI or headless terminals.
 
 ## Contributing
 
