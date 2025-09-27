@@ -1,5 +1,7 @@
 # 2eyes Toolkit
 
+![2eyes diagram](2eyes.png)
+
 2eyes turns your tmux session into a “voice-in-the-van” experience: one pane for the operator (you), one pane that keeps watch over the log stream, and an advisor pane where a second set of eyes—human, Codex, or both—can follow along. The current setup mirrors an operator with a remote support agent; the long-term vision adds a third, optional “god-eye” that can take the controls (via `tmux send-keys`) when explicitly allowed.
 
 The repository ships with:
