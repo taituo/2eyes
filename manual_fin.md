@@ -1,84 +1,89 @@
 # Testausohjeet pair_stream-työkalulle
 
-Tämä ohjeistus kattaa kaikki `pair_stream.sh`-skriptin ja Python-kiertokäsittelijän (`rotate.py`) ominaisuudet. Suorita vaiheet järjestyksessä testiympäristössä ja palauta tila tarvittaessa puhtaaksi skenaarioiden välillä.
+Ohjeet kattavat `pair_stream.sh`-skriptin ja `rotate.py`-taustaprosessin testauksen ilman kotihakemisto-olettamuksia. Valitse vapaasti testiympäristö.
 
 ## 1. Esivaatimukset
-- Asennettuna `tmux`, `python3` ja `bash`.
-- Valinnaisesti `rotatelogs` (Apache), jotta myös se backend voidaan testata.
-- Sijoita `pair_stream.sh` ja `rotate.py` testihakemistoon ja varmista suoritusoikeudet (`chmod +x pair_stream.sh rotate.py`).
-- Tarkista, että hakemistot `$HOME/pair/streams`, `$HOME/pair/out` ja `$HOME/pair/scripts` ovat kirjoitettavissa (luo ne tarvittaessa).
+- Asennettuna `tmux`, `python3`, `bash` sekä haluttaessa Apache `rotatelogs`.
+- Varmista, että `pair_stream.sh` ja `rotate.py` ovat suoritettavia (`chmod +x pair_stream.sh rotate.py`).
+- Valitse työtilan juuripolku ja aseta apupolut (muuta tarpeen mukaan):
+  ```bash
+  export PS_WORKDIR="$(pwd)/pair_test"
+  export STREAM_DIR="$PS_WORKDIR/streams"
+  export OUT_DIR="$PS_WORKDIR/out"
+  export SCRIPTS_DIR="$PS_WORKDIR/scripts"
+  mkdir -p "$STREAM_DIR" "$OUT_DIR" "$SCRIPTS_DIR"
+  ```
+- Kopioi `rotate.py` käytettävään skriptihakemistoon: `cp rotate.py "$SCRIPTS_DIR/rotate.py"`.
 
 ## 2. Lähtötilan nollaus
 1. Pysäytä mahdollinen aiempi sessio: `./pair_stream.sh stop --session pair || true`.
-2. Poista vanhat artefaktit: `rm -rf ~/pair/streams ~/pair/out`.
-3. Luo perushakemistot: `mkdir -p ~/pair/streams ~/pair/out ~/pair/scripts`.
-4. Kopioi uusin `rotate.py` polkuun `~/pair/scripts/rotate.py`.
+2. Poista vanhat artefaktit: `rm -rf "$STREAM_DIR" "$OUT_DIR"`.
+3. Luo puhtaat hakemistot yllä olevilla komennoilla ja kopioi `rotate.py` takaisin tarvittaessa.
 
 ## 3. Peruskomentojen tarkistus
-1. Käynnistä oletussessio: `./pair_stream.sh start --mode basic --demo`.
-2. Uudessa terminaalissa tarkista tila: `./pair_stream.sh status` → odota viestiä "Session 'pair' is running." ja polku `SPEC.md`:hen.
-3. Liity sessioon ( `./pair_stream.sh attach` ) ja varmista, että demo-silmukka tuottaa rivejä (`Ctrl+b d` irrottaa).
-4. Pysäytä sessio: `./pair_stream.sh stop` ja varmista, että `status` ilmoittaa sen päättyneeksi.
+1. Käynnistä oletussessio: `./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR"`.
+2. Tarkista tila: `./pair_stream.sh status --dir "$STREAM_DIR" --out "$OUT_DIR"` → odota viestiä "Session 'pair' is running." ja polkua `SPEC.md`:hen.
+3. Liity tmuxiin (`./pair_stream.sh attach`) ja varmista demo-silmukan tulosteet (irrota `Ctrl+b d`).
+4. Pysäytä sessio: `./pair_stream.sh stop` ja varmista statuksesta, että sessio ei ole käynnissä.
 
 ## 4. Tilojen testaus
 ### 4.1 Basic-tila
-- Suorita `./pair_stream.sh start --mode basic --demo`.
-- Varmista, että tmuxissa on vain `CLI`-ikkuna (`tmux list-windows -t pair`).
-- Tarkista, että `~/pair/streams` sisältää logipaloja ja `latest.log` osoittaa käynnissä olevaan tiedostoon.
+- Suorita `./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR"`.
+- Listaa tmux-ikkunat (`tmux list-windows -t pair`) ja varmista, että vain `CLI` on olemassa.
+- Tarkista, että `stream-*.log`-tiedostot ja `latest.log`-linkki syntyvät `$STREAM_DIR`-polkuun.
 - Pysäytä sessio.
 
 ### 4.2 Split-tila
-- Suorita `./pair_stream.sh start --mode split --demo`.
-- Liity tmuxiin ja varmista `VIEW`-ikkunan kaksi paneelia: ylhäällä `watch`, alhaalla `tail` `latest.log`:sta.
+- Suorita `./pair_stream.sh start --mode split --demo --dir "$STREAM_DIR" --out "$OUT_DIR"`.
+- Liity tmuxiin ja varmista `VIEW`-ikkunan `watch`- (ylä) ja `tail`- (ala) paneelit.
 - Pysäytä sessio.
 
 ### 4.3 Advanced-tila
-- Suorita `./pair_stream.sh start --mode advanced --demo`.
-- Varmista `VIEW`-paneelien toiminta kuten split-tilassa.
-- Varmista uuden `CODEX`-ikkunan kaksi paneelia:
-  - Yläpaneeli suorittaa `codex_reader.py`, joka kirjoittaa viestin `~/pair/out/solutions.log`-tiedostoon.
-  - Alapaneeli tailaa `solutions.log`-tiedostoa jatkuvasti.
+- Suorita `./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR"`.
+- Varmista `VIEW`-paneelit kuten split-tilassa.
+- Tarkista uusi `CODEX`-ikkuna: yläpaneeli suorittaa `codex_reader.py`:n ja alapaneeli tailaa `solutions.log`-tiedostoa.
+- Vahvista, että `$OUT_DIR/solutions.log` saa kirjauksia.
 - Pysäytä sessio.
 
-## 5. Backendien valinta ja yhtenäisyys
-### 5.1 rotatelogs-pakotettu
-1. Varmista `rotatelogs` komennolla `command -v rotatelogs`.
-2. Käynnistä: `./pair_stream.sh start --mode basic --demo -b rotatelogs`.
-3. Tarkista `~/pair/streams` → tiedostonimet muodossa `stream-YYYYMMDD-HHMM.log` ilman suffikseja.
+## 5. Backendien valinta ja yhdenmukaisuus
+### 5.1 rotatelogs pakotettuna
+1. Varmista saatavuus: `command -v rotatelogs`.
+2. Käynnistä `./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR" -b rotatelogs`.
+3. Tarkista, että `$STREAM_DIR` sisältää ainoastaan muotoa `stream-YYYYMMDD-HHMM.log` olevia tiedostoja.
 4. Pysäytä sessio.
 
 ### 5.2 Python-backend pakotettuna
-1. Käynnistä: `./pair_stream.sh start --mode basic --demo -b python`.
-2. Odota minuutti ja varmista, että uusi pala syntyy ilman `_1`-tyylisiä suffikseja.
-3. Käynnistä sessio uudelleen heti pysäytyksen jälkeen ja varmista, että sama tiedosto jatkaa täyttymistään (ei uusia suffikseja).
+1. Käynnistä `./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR" -b python`.
+2. Odota vähintään yhden intervallin verran ja varmista, että tiedostonimet pysyvät kanonisina ilman suffikseja.
+3. Pysäytä ja käynnistä heti uudelleen varmistaaksesi, että sama tiedosto jatkuu.
 4. Pysäytä sessio.
 
-### 5.3 Auto-backend ja fallback
-1. Peitä `rotatelogs` tilapäisesti: `PATH="/nonexistent:$PATH" ./pair_stream.sh start --mode basic --demo -b auto`.
-2. Tarkista käynnistysviestistä, että backendiksi valikoituu `python`.
-3. Palaa normaaliin PATH:iin ja pysäytä sessio.
+### 5.3 Auto-tila ja fallback
+1. Piilota `rotatelogs` väliaikaisesti: `PATH="/nonexistent:$PATH" ./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR" -b auto`.
+2. Varmista käynnistysviestistä, että backendiksi valitaan `python`.
+3. Palauta `PATH` ja pysäytä sessio.
 
 ## 6. Rotaation toiminta
-1. Käynnistä lyhyellä intervallilla: `./pair_stream.sh start --mode basic --demo --interval 10 --keep 3`.
+1. Suorita `./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR" --interval 10 --keep 3`.
 2. Odota noin 35 sekuntia.
-3. Tarkista `~/pair/streams`:
-   - Vain kolme tuoreinta `stream-*.log` -tiedostoa + `latest.log`.
+3. Tarkista `$STREAM_DIR`:
+   - Vain kolme tuoreinta `stream-*.log`-tiedostoa sekä `latest.log`.
    - Aikaleimat kasvavat 10 sekunnin välein.
-4. Varmista, että `latest.log`-symlinkki päivittyy (`readlink ~/pair/streams/latest.log`).
+4. Varmista, että `latest.log` osoittaa uusimpaan palaan: `readlink "$STREAM_DIR/latest.log"`.
 5. Pysäytä sessio.
 
 ## 7. Demonstraatiotila ilman komentoa
-1. Suorita: `./pair_stream.sh start --mode basic --session demo --cmd '' --demo`.
-2. Liity session ja varmista, että demo-silmukka täyttää logit ilman erillistä komentoa.
-3. Pysäytä `demo`-sessio.
+1. Käynnistä `./pair_stream.sh start --mode basic --session demo --cmd '' --demo --dir "$STREAM_DIR" --out "$OUT_DIR"`.
+2. Liity ja varmista, että demo-skripti tuottaa tulostetta.
+3. Pysäytä `demo`-sessio: `./pair_stream.sh stop --session demo`.
 
 ## 8. Virhetilanteiden testaus
-1. Poista `~/pair/scripts/rotate.py` ja kokeile `./pair_stream.sh start -b python` → odota virheilmoitusta puuttuvasta tiedostosta.
-2. Palauta skripti ja jatka testejä.
-3. Käynnistä sessio kahdesti peräkkäin varmistaaksesi, että skripti ilmoittaa jo käynnissä olevasta sessiosta ja poistuu asiallisesti.
+1. Poista backend-skripti: `rm "$SCRIPTS_DIR/rotate.py"` ja suorita `./pair_stream.sh start -b python --dir "$STREAM_DIR" --out "$OUT_DIR"` → odota virheilmoitusta puuttuvasta tiedostosta.
+2. Palauta tiedosto: `cp rotate.py "$SCRIPTS_DIR/rotate.py"`.
+3. Käynnistä sessio kahdesti peräkkäin ja varmista, että toinen yritys ilmoittaa session olevan jo käynnissä ja poistuu asiallisesti.
 
 ## 9. Loppusiivous
-- Suorita `./pair_stream.sh stop --session pair` ja muut mahdolliset sessiot.
-- Poista testihakemistot tarvittaessa: `rm -rf ~/pair/streams ~/pair/out ~/pair/scripts/codex_reader.py`.
+- Pysäytä kaikki auki olevat sessiot (`./pair_stream.sh stop --session pair`, jne.).
+- Poista tilapäinen työtila tarpeen mukaan: `rm -rf "$PS_WORKDIR"`.
 
-Näiden ohjeiden avulla varmistat tmux-orkestroinnin, tilojen näkymät, backendien yhdenmukaisuuden, rotaation, Codex-integraation sekä virhepolut spesifikaation mukaisesti.
+Näillä ohjeilla varmistat tmux-orkestraation, näyttötilat, backendien yhdenmukaisuuden, rotaation, Codex-integraation ja virhepolut riippumatta testipaikasta.

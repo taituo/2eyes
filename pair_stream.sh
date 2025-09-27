@@ -2,17 +2,17 @@
 set -euo pipefail
 
 # Defaults
-SESSION="pair"
-STREAM_DIR="$HOME/pair/streams"
-OUT_DIR="$HOME/pair/out"
-INTERVAL=60
-KEEP=60
-LATEST="latest.log"
-MODE="basic"          # basic | split | advanced
-CMD=""
-DEMO=0
-BACKEND="auto"        # auto | rotatelogs | python
-SCRIPTS_DIR="$HOME/pair/scripts"
+SESSION="${SESSION:-pair}"
+STREAM_DIR="${STREAM_DIR:-$HOME/pair/streams}"
+OUT_DIR="${OUT_DIR:-$HOME/pair/out}"
+INTERVAL=${INTERVAL:-60}
+KEEP=${KEEP:-60}
+LATEST="${LATEST:-latest.log}"
+MODE="${MODE:-basic}"          # basic | split | advanced
+CMD="${CMD-}"
+DEMO=${DEMO:-0}
+BACKEND="${BACKEND:-auto}"        # auto | rotatelogs | python
+SCRIPTS_DIR="${SCRIPTS_DIR:-$HOME/pair/scripts}"
 
 usage() {
   cat <<EOF
@@ -124,9 +124,14 @@ ensure_codex() {
 #!/usr/bin/env python3
 import time, os, re, glob, sys
 from datetime import datetime
+from pathlib import Path
 
-STREAM_DIR = os.path.expanduser(os.environ.get("STREAM_DIR", "~/pair/streams"))
-OUT_DIR = os.path.expanduser(os.environ.get("OUT_DIR", "~/pair/out"))
+HOME = Path.home()
+DEFAULT_STREAM_DIR = str(HOME / "pair" / "streams")
+DEFAULT_OUT_DIR = str(HOME / "pair" / "out")
+
+STREAM_DIR = os.path.expanduser(os.environ.get("STREAM_DIR", DEFAULT_STREAM_DIR))
+OUT_DIR = os.path.expanduser(os.environ.get("OUT_DIR", DEFAULT_OUT_DIR))
 LATEST = os.path.join(STREAM_DIR, os.environ.get("LATEST", "latest.log"))
 OUT_SOL = os.path.join(OUT_DIR, "solutions.log")
 
@@ -268,4 +273,3 @@ case "${ACTION}" in
   attach) attach_session ;;
   *) usage; exit 1 ;;
 esac
-
