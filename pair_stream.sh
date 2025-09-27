@@ -42,7 +42,10 @@ EOF
 ACTION=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    start|stop|status|attach) ACTION="$1"; shift; break ;;
+    start|stop|status|attach)
+      ACTION="${ACTION:-$1}";
+      shift;
+      ;;
     -s|--session) SESSION="$2"; shift 2 ;;
     -d|--dir) STREAM_DIR="$2"; shift 2 ;;
     -o|--out) OUT_DIR="$2"; shift 2 ;;
@@ -204,9 +207,8 @@ start_session() {
     run_cmd='echo "No --cmd provided. Type your SSH here when attached."'
   fi
 
-  tmux new-session -d -s "$SESSION" -n CLI
-  tmux rename-window -t "$SESSION":CLI "CLI Panel"
-  tmux send-keys -t "$SESSION":CLI "$run_cmd" C-m
+  tmux new-session -d -s "$SESSION" -n "CLI Panel"
+  tmux send-keys -t "$SESSION":"CLI Panel" "$run_cmd" C-m
 
   if [[ "$chosen" == "rotatelogs" ]]; then
     need rotatelogs || { echo "Selected rotatelogs but not installed."; exit 1; }
@@ -214,32 +216,30 @@ start_session() {
   else
     backend_cmd="$(python_rotate_cmd)"
   fi
-  tmux pipe-pane -o -t "$SESSION":CLI "$backend_cmd"
+  tmux pipe-pane -o -t "$SESSION":"CLI Panel" "$backend_cmd"
 
   if [[ "$MODE" == "split" || "$MODE" == "advanced" ]]; then
-    tmux new-window -t "$SESSION" -n VIEW
-    tmux rename-window -t "$SESSION":VIEW "Streams Panel"
-    tmux send-keys -t "$SESSION":VIEW "watch -n 1 'ls -lh $STREAM_DIR | tail -n +1'" C-m
-    tmux split-window -v -t "$SESSION":VIEW
-    tmux select-pane -t "$SESSION":VIEW.0 -T "Directory Watch"
+    tmux new-window -t "$SESSION" -n "Streams Panel"
+    tmux send-keys -t "$SESSION":"Streams Panel" "watch -n 1 'ls -lh $STREAM_DIR | tail -n +1'" C-m
+    tmux split-window -v -t "$SESSION":"Streams Panel"
+    tmux select-pane -t "$SESSION":"Streams Panel".0 -T "Directory Watch"
     if [[ -n "$LATEST" ]]; then
-      tmux select-pane -t "$SESSION":VIEW.1 -T "Latest Tail"
-      tmux send-keys -t "$SESSION":VIEW.1 "tail -F $STREAM_DIR/$LATEST" C-m
+      tmux select-pane -t "$SESSION":"Streams Panel".1 -T "Latest Tail"
+      tmux send-keys -t "$SESSION":"Streams Panel".1 "tail -F $STREAM_DIR/$LATEST" C-m
     else
-      tmux select-pane -t "$SESSION":VIEW.1 -T "Latest Tail"
-      tmux send-keys -t "$SESSION":VIEW.1 "tail -F \$(ls -1t $STREAM_DIR/stream-*.log | head -n1)" C-m
+      tmux select-pane -t "$SESSION":"Streams Panel".1 -T "Latest Tail"
+      tmux send-keys -t "$SESSION":"Streams Panel".1 "tail -F \$(ls -1t $STREAM_DIR/stream-*.log | head -n1)" C-m
     fi
   fi
 
   if [[ "$MODE" == "advanced" ]]; then
     ensure_codex
-    tmux new-window -t "$SESSION" -n CODEX
-    tmux rename-window -t "$SESSION":CODEX "Advisor Panel"
-    tmux send-keys -t "$SESSION":CODEX "export STREAM_DIR='$STREAM_DIR' OUT_DIR='$OUT_DIR' LATEST='${LATEST:-latest.log}'; $SCRIPTS_DIR/codex_reader.py" C-m
-    tmux select-pane -t "$SESSION":CODEX.0 -T "Codex Reader"
-    tmux split-window -v -t "$SESSION":CODEX
-    tmux select-pane -t "$SESSION":CODEX.1 -T "Advisor Log"
-    tmux send-keys -t "$SESSION":CODEX.1 "tail -F $OUT_DIR/solutions.log" C-m
+    tmux new-window -t "$SESSION" -n "Advisor Panel"
+    tmux send-keys -t "$SESSION":"Advisor Panel" "export STREAM_DIR='$STREAM_DIR' OUT_DIR='$OUT_DIR' LATEST='${LATEST:-latest.log}'; $SCRIPTS_DIR/codex_reader.py" C-m
+    tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Reader"
+    tmux split-window -v -t "$SESSION":"Advisor Panel"
+    tmux select-pane -t "$SESSION":"Advisor Panel".1 -T "Advisor Log"
+    tmux send-keys -t "$SESSION":"Advisor Panel".1 "tail -F $OUT_DIR/solutions.log" C-m
   fi
 
   echo "Started '$SESSION' (mode: $MODE, backend: $chosen)."
