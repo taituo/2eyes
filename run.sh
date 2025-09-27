@@ -142,8 +142,10 @@ stop_workspace() {
   choice=$(prompt 'Workspace to stop (name): ')
   [[ -n "$choice" ]] || return
   local meta="$WORKSPACES_DIR/$choice/.workspace"
-  local session
-  [[ -f "$meta" ]] && session=$(grep '^session=' "$meta" | head -n1 | cut -d= -f2- || true)
+  local session=""
+  if [[ -f "$meta" ]]; then
+    session=$(grep '^session=' "$meta" | head -n1 | cut -d= -f2- || true)
+  fi
   if [[ -n "$session" ]]; then
     "$PAIR_SCRIPT" stop --session "$session" || true
   fi
