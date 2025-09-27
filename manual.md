@@ -1,6 +1,8 @@
 # Testing Manual for pair_stream Toolkit
 
-All preparatory notes appear below; copy and run the single code block to exercise every feature.
+Tip: you can also launch `./run.sh` and pick option 4 (automated regression) or
+option 1/2/3 for interactive workspaces. The block below shows the raw commands
+that those menu options execute.
 
 ```bash
 # 1. Workspace setup
@@ -42,7 +44,7 @@ tmux list-windows -t pair
 # optional: auto-run your Codex CLI (replace with your command)
 # ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" \
 #   --codex-cd "$PS_WORKDIR" \
-#   --codex-cmd "codex exec --cd '$PS_WORKDIR' --dangerously-bypass-approvals-and-sandbox -m gpt-4.1 '<prompt>'"
+#   --codex-cmd "codex exec --cd '$PS_WORKDIR' --dangerously-bypass-approvals-and-sandbox -m gpt-5-codex-medium '<prompt>'"
 # ./pair_stream.sh stop
 # optional: use built-in advisor stub instead of an interactive shell
 ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" --codex-stub

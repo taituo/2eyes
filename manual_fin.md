@@ -1,6 +1,8 @@
 # Testausohjeet pair_stream-työkalulle
 
-Kaikki valmistelut ovat alla; kopioi ja aja yksi komentolista.
+Vinkki: `./run.sh` tarjoaa valikon (kohta 4 ajaa automaattiset testit, kohdat
+1–3 luovat interaktiivisia työtiloja). Alla oleva lohko sisältää samat komennot
+manuaalisesti suoritettuna.
 
 ```bash
 # 1. Työtilan valmistelu
@@ -42,7 +44,7 @@ tmux list-windows -t pair
 # valinnainen: suorita Codex CLI automaattisesti (korvaa omalla komennolla)
 # ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" \
 #   --codex-cd "$PS_WORKDIR" \
-#   --codex-cmd "codex exec --cd '$PS_WORKDIR' --dangerously-bypass-approvals-and-sandbox -m gpt-4.1 '<prompt>'"
+#   --codex-cmd "codex exec --cd '$PS_WORKDIR' --dangerously-bypass-approvals-and-sandbox -m gpt-5-codex-medium '<prompt>'"
 # ./pair_stream.sh stop
 # valinnainen: käytä sisäänrakennettua advisor-stubia interaktiivisen sijaan
 ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" --codex-stub

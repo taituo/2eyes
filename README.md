@@ -1,63 +1,79 @@
 # 2eyes Toolkit
 
-A lightweight tmux-based pairing environment for collecting CLI output into time-sliced streams and feeding it to an advisor agent. It bundles:
+2eyes turns your tmux session into a “voice-in-the-van” experience: one pane for the operator (you), one pane that keeps watch over the log stream, and an advisor pane where a second set of eyes—human, Codex, or both—can follow along. The current setup mirrors an operator with a remote support agent; the long-term vision adds a third, optional “god-eye” that can take the controls (via `tmux send-keys`) when explicitly allowed.
 
-- `pair_stream.sh` — orchestrates tmux panes/windows, runs your command, and streams output into rotatelogs or the Python fallback.
-- `rotate.py` — Python backend implementing the same rotation behaviour as Apache `rotatelogs` with interval-accurate filenames.
-- `manual_test.sh` — helper that spins up a disposable workspace, prints the runnable manuals, and optionally cleans up after testing.
-- Manuals (`manual.md`, `manual_fin.md`) and `SPEC_explanation.md` describing the stream format and testing flow.
+The repository ships with:
+
+- `pair_stream.sh` — orchestrates the tmux layout, rotates logs, and bootstraps the advisor pane.
+- `rotate.py` — Python fallback that mirrors Apache `rotatelogs` naming and retention.
+- `run.sh` — menu-driven command center for creating workspaces, running tests, and launching advisor sessions.
+- `tests/run_tests.sh` — headless regression sweep that mirrors the manual walkthrough.
+- Manuals (`manual.md`, `manual_fin.md`) and `SPEC_explanation.md` describing the stream format and validation steps.
 
 ## Implemented
 
-- **Panel-first layout:** default tmux session launches with `CLI Panel`, `Streams Panel`, and (in advanced mode) `Advisor Panel`, each with titled panes so you always work inside panels.
-- **Backend parity:** Python rotation keeps canonical filenames; symlink/local cleanup mirrors `rotatelogs`.
-- **Workspace helper:** `manual_test.sh` clones the repo to `<source>_test`, exports needed env vars, and runs your login shell; `--clean` removes the sandbox on exit.
-- **Manuals as code blocks:** English and Finnish guides are single copy/paste blocks covering setup, lifecycle, modes, backends, rotation, error paths, and cleanup.
-- **Spec surfaced in runtime:** `pair_stream.sh` writes `SPEC.md` into the stream directory on each start so agents can read the stream specification inline.
-- **Advisor flexibility:** Advanced mode defaults to an interactive Codex pane; use `--codex-cmd "<command>"` to auto-run your CLI or `--codex-stub` to load the built-in regex helper, and `--codex-cd PATH` to change the working directory before launch.
-- **Automation ready:** The `--no-attach` flag leaves sessions detached so the included `tests/run_manual_tests.sh` can exercise the full workflow headlessly.
+- **Operator + watcher + advisor panels:** default tmux layout provides `CLI Panel`, `Streams Panel`, and (in advanced mode) `Advisor Panel`, each named so you always know their role.
+- **Backend parity:** the Python rotating backend keeps canonical filenames and respects keep/interval semantics.
+- **Workspace orchestration:** `run.sh` creates numbered workspaces (`workspace_001`, `workspace_002`, …), reacts to existing tmux sessions, and records metadata for later attachment or teardown.
+- **Advisor flexibility:** choose between an interactive shell, the built-in regex stub, or an arbitrary Codex CLI command (e.g. `codex exec -m gpt-5-codex-medium …`).
+- **Automation ready:** `tests/run_tests.sh` exercises basic/split/advanced modes, validates rotation retention, and confirms Codex stub logging—all with `--no-attach` sessions so CI or headless terminals can run it.
 
-## Not Yet Implemented / TODO
+## Not Yet / Roadmap
 
-- **Automated tests:** manuals describe manual validation; there’s no automated test harness yet.
-- **Dependency auto-installation:** script exits if `tmux`, `rotatelogs`, or `rotate.py` prerequisites are missing; no installer or package manager integration.
-- **Codex advisor enhancements:** generated `codex_reader.py` ships with baseline rules; no extensibility or plugin system beyond editing the script.
-- **Cross-platform validation:** tested on Linux tmux environments; no Windows/WSL adjustments in place.
-- **CI pipeline:** repository doesn’t include GitHub Actions or other CI definitions yet.
+- **Advisor evolution:** richer Codex prompts, multi-turn hints, and eventually the optional “god-eye” that can `tmux send-keys` into the operator pane when invited.
+- **Self-installing dependencies:** today we assume `tmux`, `python3`, and optionally `rotatelogs` are present.
+- **Cross-platform support:** currently validated on Linux; Windows/WSL paths may need adjustments.
+- **CI wiring:** no GitHub Actions yet; contributions welcome.
 
 ## Getting Started
 
 ```bash
 git clone git@github.com:taituo/2eyes.git
 cd 2eyes
-./manual_test.sh --manual manual.md --clean
+./run.sh
 ```
 
-The helper will clone into `../2eyes_test`, run setup/reset, print the manual, and drop you into the prepared shell. Follow the code block to exercise every feature. Use `--manual manual_fin.md` for Finnish instructions.
+The menu offers:
 
-Need an automated Codex run? Supply your command via `--codex-cmd` (and optionally `--codex-cd` to point at the project root):
+1. Start advanced workspace (interactive advisor)
+2. Start advanced workspace (Codex stub)
+3. Start advanced workspace (custom Codex command)
+4. Run automated regression suite
+5. Attach to existing workspace
+6. Stop & remove workspace
+7. List workspace status
+8. Exit
 
-```bash
-./pair_stream.sh start --mode advanced --demo \
-  --codex-cd "$PWD" \
-  --codex-cmd "codex exec --cd '$PWD' --dangerously-bypass-approvals-and-sandbox -m gpt-4.1 '<prompt>'"
+Need Codex running automatically? Pick option 3 and paste something like:
+
+```
+codex exec --cd "$PWD/workspaces/workspace_001" \
+  --dangerously-bypass-approvals-and-sandbox \
+  -m gpt-5-codex-medium \
+  'Track the operator log, summarise errors, and propose next actions.'
 ```
 
-Without `--codex-cmd`, the advisor pane stays interactive so you can start Codex manually; `--codex-stub` restores the built-in regex helper.
+Prefer manual steering? Option 1 opens the advisor pane as a shell so you can chat with Codex or run helper scripts yourself. Option 2 reverts to the regex stub that flags common CLI issues.
 
 ### Automated Checks
 
-You can mirror the manual walkthrough with a scripted smoke test:
+Use the regression sweep to mirror the manual walkthrough:
 
 ```bash
-./tests/run_manual_tests.sh
+./tests/run_tests.sh
+# or reuse a workspace
+./tests/run_tests.sh --workspace workspaces/workspace_099
 ```
 
-The helper provisions a temporary workspace, runs through basic/split/advanced modes, verifies rotation limits, and confirms the Python backend keeps canonical filenames. All tmux sessions are left detached via `--no-attach` so the script can run in CI or headless terminals.
+Artifacts (streams, out, scripts, and `test_report.txt`) stay inside the chosen workspace. Sessions are left detached so the tests can run inside CI.
+
+## Mission Briefings & Reports
+
+Every workspace collects its own log stream (`streams/stream-*.log`), advisor output (`out/solutions.log`), and metadata (`.workspace`). These files are the basis for post-operation reports—compile them into a narrative, attach the Codex suggestions, and you have a mission debrief ready to share.
 
 ## Contributing
 
-1. Fork the repo, create a branch, and align with the manuals (ensure no suffixed chunk filenames, panels correctly named).
-2. If you update the stream spec or scripts, mirror the change in both manuals.
-3. Run through `manual_test.sh --clean` to confirm the flow remains intact.
-4. Submit a PR detailing implemented features vs planned TODOs.
+1. Fork the repo, branch off `master`, and keep `run.sh` + `tests/run_tests.sh` green.
+2. When touching the spec or layout, update both manuals (English & Finnish) and adjust the automated tests if behaviour changes.
+3. Run `./tests/run_tests.sh` (optionally with `--workspace …`) before opening a PR.
+4. In your PR summary, call out improvements towards the advisor/god-eye roadmap.
