@@ -68,6 +68,7 @@ if [[ ! -f "$MANUAL_PATH" ]]; then
 fi
 
 TARGET_PARENT="$(dirname "$TARGET")"
+TARGET_NAME="$(basename "$TARGET")"
 mkdir -p "$TARGET_PARENT"
 
 rm -rf "$TARGET"
@@ -93,3 +94,14 @@ cat <<EOF
 
 -- Environment prepared. You are now in $TARGET.
 -- Continue by running the command blocks from $(basename "$MANUAL_PATH") above.
+EOF
+
+cleanup() {
+  if $CLEAN; then
+    cd "$TARGET_PARENT"
+    rm -rf "$TARGET_NAME"
+  fi
+}
+trap cleanup EXIT
+
+bash --noprofile --norc
