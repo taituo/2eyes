@@ -104,4 +104,5 @@ cleanup() {
 }
 trap cleanup EXIT
 
-bash --noprofile --norc
+USER_SHELL="${SHELL:-/bin/bash}"
+"$USER_SHELL" -i
