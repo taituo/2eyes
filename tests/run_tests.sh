@@ -3,12 +3,19 @@ set -euo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: tests/run_tests.sh [--workspace DIR]
+Usage: tests/run_tests.sh [--workspace DIR] [--replay-cast PATH]
 
-Smoketests the tmux orchestration: basic/split/advanced modes, Codex stub,
-rotation retention, and python backend naming. When --workspace is provided,
-artifacts (streams/out/scripts + logs) are stored under that directory and the
-workspace is not deleted afterwards.
+Smoketests the tmux orchestration:
+  - panel layout in basic/split/advanced modes
+  - Codex stub logging and custom Codex command execution
+  - rotation retention and Python backend naming
+  - workspace teardown when metadata lacks session info
+  - optional replay of a sample asciinema cast to verify stream capture
+  - debrief generation (HTML + Markdown)
+
+When --workspace is provided, artifacts (streams/out/scripts + logs) are stored
+under that directory and not deleted afterwards. Use --replay-cast casts/foo.cast
+to feed canned operator activity into the CLI panel mid-run.
 HELP
 }
 
@@ -17,10 +24,13 @@ PAIR_SCRIPT="$PROJECT_ROOT/pair_stream.sh"
 ROTATE_PY="$PROJECT_ROOT/rotate.py"
 
 WORKSPACE=""
+REPLAY_CAST=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --workspace)
       WORKSPACE="$2"; shift 2 ;;
+    --replay-cast)
+      REPLAY_CAST="$2"; shift 2 ;;
     -h|--help)
       usage; exit 0 ;;
     *)
@@ -41,6 +51,7 @@ STREAM_DIR="$WORKSPACE/streams"
 OUT_DIR="$WORKSPACE/out"
 SCRIPTS_DIR="$WORKSPACE/scripts"
 REPORT="$WORKSPACE/test_report.txt"
+CAST_LOG="$WORKSPACE/cast.log"
 
 SESSION_BASE="pw_$$"
 SESSION_INDEX=0
@@ -96,8 +107,7 @@ wait_for_file() {
 }
 
 start_session() {
-  STREAM_DIR="$STREAM_DIR" OUT_DIR="$OUT_DIR" SCRIPTS_DIR="$SCRIPTS_DIR" \
-  "$PAIR_SCRIPT" start --session "$SESSION" --dir "$STREAM_DIR" --out "$OUT_DIR" --no-attach "$@" >/dev/null
+  STREAM_DIR="$STREAM_DIR" OUT_DIR="$OUT_DIR" SCRIPTS_DIR="$SCRIPTS_DIR"   "$PAIR_SCRIPT" start --session "$SESSION" --dir "$STREAM_DIR" --out "$OUT_DIR" --no-attach "$@" >/dev/null
 }
 
 stop_session() {
@@ -188,12 +198,42 @@ else
 fi
 stop_session
 
+### 8) workspace teardown without session
+next_session
+reset_workspace
+# simulate a workspace with no session metadata
+rm -f "$WORKSPACE/.workspace"
+mkdir -p "$WORKSPACE"
+run=1
+if ./run.sh <<'MENU'
+7
+6
+test_run_001
+8
+MENU
+then
+  log_pass "run.sh handled missing session metadata"
+else
+  log_fail "run.sh handled missing session metadata"
+fi
+
 ### Debrief generation
 tools/debrief.sh --workspace "$WORKSPACE" >/dev/null 2>&1
 if [[ -f "$WORKSPACE/debrief.html" && -f "$WORKSPACE/brief_task.md" ]]; then
   log_pass "debrief assets generated"
 else
   log_fail "debrief assets generated"
+fi
+
+### Optional cast replay
+if [[ -n "$REPLAY_CAST" && -f "$REPLAY_CAST" ]]; then
+  next_session
+  reset_workspace
+  start_session --mode advanced --demo --codex-stub
+  sleep 2
+  asciinema play "$REPLAY_CAST" >/dev/null 2>&1 || true
+  stop_session
+  log_pass "cast $REPLAY_CAST replayed"
 fi
 
 if [[ $FAIL -eq 0 ]]; then

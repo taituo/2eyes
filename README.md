@@ -81,6 +81,20 @@ codex exec --cd "$PWD/workspaces/workspace_001" \
 
 Prefer manual steering? Option 1 opens the advisor pane as a shell so you can chat with Codex or run helper scripts yourself. Option 2 reverts to the regex stub that flags common CLI issues.
 
+
+### Scenario Casts
+
+Replay or feed these asciinema recordings to Codex:
+
+| Scenario | Description | File |
+| --- | --- | --- |
+| Kubernetes CrashLoop | Operator deletes a stuck pod and confirms recovery | `casts/kubernetes_deployment.cast` |
+| Junos Port Unlock | Netops engineer removes the wrong shutdown, then fixes the correct port | `casts/junos_port.cast` |
+| Linux Disk Cleanup | SRE frees space by truncating logs and vacuuming journals | `casts/linux_disk.cast` |
+
+> Example replay: `asciinema play casts/kubernetes_deployment.cast`
+> Example Codex run: `codex exec -m gpt-5-codex-medium --prompt-file casts/kubernetes_deployment.cast` (if your Codex CLI supports transcript prompts)
+
 ### Automated Checks
 
 Use the regression sweep to mirror the manual walkthrough:
