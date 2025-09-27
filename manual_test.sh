@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: manual_test.sh [--source PATH] [--target PATH] [--manual PATH]
+Usage: manual_test.sh [--source PATH] [--target PATH] [--manual PATH] [--clean]
 
 Copies the project from the source directory to the target directory, runs the
 setup + reset steps from the manuals, and prints the chosen manual. Drops into
@@ -11,31 +11,39 @@ an interactive shell inside the target with environment variables exported.
 
 Options:
   --source PATH   Path to the canonical repo (default: directory of this script)
-  --target PATH   Directory for the working copy  (default: $HOME/dev/2eyestest)
+  --target PATH   Directory for the working copy  (default: <source>_test)
   --manual PATH   Manual file to display        (default: manual.md)
+  --clean         Remove the target directory on exit
 HELP
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_SOURCE="$SCRIPT_DIR"
-DEFAULT_TARGET="$HOME/dev/2eyestest"
+SOURCE_BASE="$(basename "$DEFAULT_SOURCE")"
+DEFAULT_TARGET="$(dirname "$DEFAULT_SOURCE")/${SOURCE_BASE}_test"
 
 SOURCE=""
 TARGET=""
 MANUAL="manual.md"
+CLEAN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --source) SOURCE="$2"; shift 2 ;;
     --target) TARGET="$2"; shift 2 ;;
     --manual) MANUAL="$2"; shift 2 ;;
+    --clean) CLEAN=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
   esac
 done
 
 SOURCE="${SOURCE:-$DEFAULT_SOURCE}"
-TARGET="${TARGET:-$DEFAULT_TARGET}"
+if [[ -z "$TARGET" ]]; then
+  SOURCE_DIRNAME="$(dirname "$SOURCE")"
+  SOURCE_BASENAME="$(basename "$SOURCE")"
+  TARGET="${SOURCE_DIRNAME}/${SOURCE_BASENAME}_test"
+fi
 
 if [[ "$SOURCE" == "$TARGET" ]]; then
   echo "Source and target must differ." >&2
