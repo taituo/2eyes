@@ -151,12 +151,24 @@ else
 fi
 stop_session
 
-### 5) rotation keep limit
+### 5) advanced custom command
+next_session
+reset_workspace
+start_session --mode advanced --demo --codex-cmd "echo CODexReady && sleep 1"
+sleep 2
+PANE_CAPTURE=$(tmux capture-pane -p -t "$SESSION":"Advisor Panel".0)
+assert_contains "$PANE_CAPTURE" "CODexReady" "advanced: custom command executed"
+stop_session
+
+### 6) rotation keep limit
 next_session
 reset_workspace
 start_session --mode split --demo --interval 2 --keep 2
 sleep 7
-FILE_COUNT=$(ls "$STREAM_DIR"/stream-*.log 2>/dev/null | wc -l | tr -d ' ')
+shopt -s nullglob
+stream_files=("$STREAM_DIR"/stream-*.log)
+FILE_COUNT=${#stream_files[@]}
+shopt -u nullglob
 if [[ "$FILE_COUNT" -le 2 ]]; then
   log_pass "rotation respected keep limit"
 else
@@ -164,7 +176,7 @@ else
 fi
 stop_session
 
-### 6) python backend naming
+### 7) python backend naming
 next_session
 reset_workspace
 start_session --mode basic --demo --backend python
@@ -175,6 +187,14 @@ else
   log_pass "python backend kept canonical names"
 fi
 stop_session
+
+### Debrief generation
+tools/debrief.sh --workspace "$WORKSPACE" >/dev/null 2>&1
+if [[ -f "$WORKSPACE/debrief.html" && -f "$WORKSPACE/brief_task.md" ]]; then
+  log_pass "debrief assets generated"
+else
+  log_fail "debrief assets generated"
+fi
 
 if [[ $FAIL -eq 0 ]]; then
   echo "All $PASS checks passed." | tee -a "$REPORT"

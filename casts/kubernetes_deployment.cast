@@ -1,0 +1,13 @@
+{"version": 2, "width": 80, "height": 24, "timestamp": 1700000000, "env": {"SHELL": "/bin/bash", "TERM": "xterm-256color"}}
+[0.0, "o", "\u001b[1;32mops@cluster\u001b[0m:~$ kubectl get pods\r\n"]
+[0.4, "o", "my-app-7b5c9fdb7b-2k59l   0/1     CrashLoopBackOff   5          2m30s\r\n"]
+[1.0, "o", "\u001b[1;32mops@cluster\u001b[0m:~$ kubectl describe pod my-app-7b5c9fdb7b-2k59l | tail -n5\r\n"]
+[1.5, "o", "  Warning  BackOff    1m    kubelet  Back-off restarting failed container\r\n"]
+[2.2, "o", "  Normal   Pulling    55s   kubelet  Pulling image \"my-registry/app:latest\"\r\n"]
+[3.0, "o", "\u001b[1;32mops@cluster\u001b[0m:~$ kubectl delete pod my-app-7b5c9fdb7b-2k59l\r\n"]
+[3.4, "o", "pod \"my-app-7b5c9fdb7b-2k59l\" deleted\r\n"]
+[3.9, "o", "\u001b[1;32mops@cluster\u001b[0m:~$ kubectl get pods\r\n"]
+[4.5, "o", "my-app-7b5c9fdb7b-vhxq8   1/1     Running   0          15s\r\n"]
+[5.2, "o", "\u001b[1;32mops@cluster\u001b[0m:~$ kubectl logs deploy/my-app | tail -n5\r\n"]
+[5.9, "o", "Started serving on :8080\r\n"]
+[6.5, "o", "GET /healthz 200 2ms\r\n"]

@@ -8,7 +8,31 @@ The repository ships with:
 - `rotate.py` — Python fallback that mirrors Apache `rotatelogs` naming and retention.
 - `run.sh` — menu-driven command center for creating workspaces, running tests, and launching advisor sessions.
 - `tests/run_tests.sh` — headless regression sweep that mirrors the manual walkthrough.
-- Manuals (`manual.md`, `manual_fin.md`) and `SPEC_explanation.md` describing the stream format and validation steps.
+- `tools/debrief.sh` — turns a finished workspace into an HTML/Markdown mission report scaffold.
+- Manuals (`manual.md`) and `SPEC_explanation.md` describing the stream format and validation steps.
+- Sample casts (`casts/*.cast`) you can replay or feed to Codex for simulated missions.
+
+## Architecture at a Glance
+
+```mermaid
+flowchart LR
+  Operator[Operator CLI] -->|stdout| Rotator[rotate.py / rotatelogs]
+  Rotator --> Streams[streams/*.log]
+  Streams --> Advisor[Advisor Pane]
+  Advisor --> Solutions[out/solutions.log]
+  Solutions --> Debrief[HTML + brief_task]
+```
+
+```mermaid
+sequenceDiagram
+  participant Op as Operator
+  participant Van as Advisor "voice in van"
+  participant Report as Debrief
+  Op->>Van: emit commands & output
+  Van->>Op: hints (interactive or stub)
+  Van->>Report: append insights
+  Report-->>Op: mission debrief
+```
 
 ## Implemented
 
@@ -69,11 +93,16 @@ Artifacts (streams, out, scripts, and `test_report.txt`) stay inside the chosen 
 
 ## Mission Briefings & Reports
 
-Every workspace collects its own log stream (`streams/stream-*.log`), advisor output (`out/solutions.log`), and metadata (`.workspace`). These files are the basis for post-operation reports—compile them into a narrative, attach the Codex suggestions, and you have a mission debrief ready to share.
+Every workspace collects its own log stream (`streams/stream-*.log`), advisor output (`out/solutions.log`), and metadata (`.workspace`). Run `tools/debrief.sh --workspace workspaces/workspace_001` to generate:
+
+- `debrief.html` — self-contained report with Mermaid diagrams and recent evidence
+- `brief_task.md` — ready-to-use Codex prompt scaffold for a one-shot debrief
+
+Bring in the sample casts for richer playback or hand them to Codex for after-action analysis.
 
 ## Contributing
 
-1. Fork the repo, branch off `master`, and keep `run.sh` + `tests/run_tests.sh` green.
-2. When touching the spec or layout, update both manuals (English & Finnish) and adjust the automated tests if behaviour changes.
+1. Fork the repo, branch off `master`, and keep `run.sh`, `tests/run_tests.sh`, and `tools/debrief.sh` green.
+2. When touching the spec or layout, update `manual.md` plus the regression tests.
 3. Run `./tests/run_tests.sh` (optionally with `--workspace …`) before opening a PR.
-4. In your PR summary, call out improvements towards the advisor/god-eye roadmap.
+4. In your PR summary, call out improvements towards the advisor/god-eye roadmap (semi-automatic hints, trusted takeover, richer debriefs).

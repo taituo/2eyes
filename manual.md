@@ -87,3 +87,10 @@ cp rotate.py "$SCRIPTS_DIR/rotate.py"
 rm -rf "$PS_WORKDIR"
 unset PS_WORKDIR STREAM_DIR OUT_DIR SCRIPTS_DIR
 ```
+
+## After the Session
+
+- `./tools/debrief.sh --workspace workspaces/workspace_001` generates
+  `debrief.html` and `brief_task.md` for that workspace.
+- Sample asciinema casts in `casts/` let you replay common missions or feed
+  Codex with pre-recorded transcripts.
