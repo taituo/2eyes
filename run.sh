@@ -157,7 +157,7 @@ start_interactive_menu() {
   while true; do
     cat <<'MENU'
 
---- 2eyes Command Center ---
+🌑 プロジェクト 2EYES — Command Center
 1) Start advanced workspace (interactive advisor)
 2) Start advanced workspace (Codex stub)
 3) Start advanced workspace (custom Codex command)
