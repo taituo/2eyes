@@ -27,12 +27,15 @@ cp rotate.py "$SCRIPTS_DIR/rotate.py"
 
 # 4. Näkymätilat
 ./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR"
+# odota tmux-listauksessa vain "CLI Panel"
 tmux list-windows -t pair
 ./pair_stream.sh stop
 ./pair_stream.sh start --mode split --demo --dir "$STREAM_DIR" --out "$OUT_DIR"
+# odota ikkunat "CLI Panel" ja "Streams Panel"
 tmux list-windows -t pair
 ./pair_stream.sh stop
 ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR"
+# odota ikkunat "CLI Panel", "Streams Panel", "Advisor Panel"
 tmux list-windows -t pair
 ./pair_stream.sh stop
 

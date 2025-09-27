@@ -8,7 +8,7 @@ OUT_DIR="${OUT_DIR:-$HOME/pair/out}"
 INTERVAL=${INTERVAL:-60}
 KEEP=${KEEP:-60}
 LATEST="${LATEST:-latest.log}"
-MODE="${MODE:-basic}"          # basic | split | advanced
+MODE="${MODE:-split}"          # basic | split | advanced
 CMD="${CMD-}"
 DEMO=${DEMO:-0}
 BACKEND="${BACKEND:-auto}"        # auto | rotatelogs | python
@@ -205,6 +205,7 @@ start_session() {
   fi
 
   tmux new-session -d -s "$SESSION" -n CLI
+  tmux rename-window -t "$SESSION":CLI "CLI Panel"
   tmux send-keys -t "$SESSION":CLI "$run_cmd" C-m
 
   if [[ "$chosen" == "rotatelogs" ]]; then
@@ -217,21 +218,28 @@ start_session() {
 
   if [[ "$MODE" == "split" || "$MODE" == "advanced" ]]; then
     tmux new-window -t "$SESSION" -n VIEW
+    tmux rename-window -t "$SESSION":VIEW "Streams Panel"
     tmux send-keys -t "$SESSION":VIEW "watch -n 1 'ls -lh $STREAM_DIR | tail -n +1'" C-m
     tmux split-window -v -t "$SESSION":VIEW
+    tmux select-pane -t "$SESSION":VIEW.0 -T "Directory Watch"
     if [[ -n "$LATEST" ]]; then
-      tmux send-keys -t "$SESSION":VIEW.2 "tail -F $STREAM_DIR/$LATEST" C-m
+      tmux select-pane -t "$SESSION":VIEW.1 -T "Latest Tail"
+      tmux send-keys -t "$SESSION":VIEW.1 "tail -F $STREAM_DIR/$LATEST" C-m
     else
-      tmux send-keys -t "$SESSION":VIEW.2 "tail -F \$(ls -1t $STREAM_DIR/stream-*.log | head -n1)" C-m
+      tmux select-pane -t "$SESSION":VIEW.1 -T "Latest Tail"
+      tmux send-keys -t "$SESSION":VIEW.1 "tail -F \$(ls -1t $STREAM_DIR/stream-*.log | head -n1)" C-m
     fi
   fi
 
   if [[ "$MODE" == "advanced" ]]; then
     ensure_codex
     tmux new-window -t "$SESSION" -n CODEX
+    tmux rename-window -t "$SESSION":CODEX "Advisor Panel"
     tmux send-keys -t "$SESSION":CODEX "export STREAM_DIR='$STREAM_DIR' OUT_DIR='$OUT_DIR' LATEST='${LATEST:-latest.log}'; $SCRIPTS_DIR/codex_reader.py" C-m
+    tmux select-pane -t "$SESSION":CODEX.0 -T "Codex Reader"
     tmux split-window -v -t "$SESSION":CODEX
-    tmux send-keys -t "$SESSION":CODEX.2 "tail -F $OUT_DIR/solutions.log" C-m
+    tmux select-pane -t "$SESSION":CODEX.1 -T "Advisor Log"
+    tmux send-keys -t "$SESSION":CODEX.1 "tail -F $OUT_DIR/solutions.log" C-m
   fi
 
   echo "Started '$SESSION' (mode: $MODE, backend: $chosen)."
