@@ -14,6 +14,7 @@ A lightweight tmux-based pairing environment for collecting CLI output into time
 - **Workspace helper:** `manual_test.sh` clones the repo to `<source>_test`, exports needed env vars, and runs your login shell; `--clean` removes the sandbox on exit.
 - **Manuals as code blocks:** English and Finnish guides are single copy/paste blocks covering setup, lifecycle, modes, backends, rotation, error paths, and cleanup.
 - **Spec surfaced in runtime:** `pair_stream.sh` writes `SPEC.md` into the stream directory on each start so agents can read the stream specification inline.
+- **Advisor flexibility:** Advanced mode defaults to an interactive Codex pane; use `--codex-cmd "<command>"` to auto-run your CLI or `--codex-stub` to load the built-in regex helper, and `--codex-cd PATH` to change the working directory before launch.
 
 ## Not Yet Implemented / TODO
 
@@ -33,10 +34,19 @@ cd 2eyes
 
 The helper will clone into `../2eyes_test`, run setup/reset, print the manual, and drop you into the prepared shell. Follow the code block to exercise every feature. Use `--manual manual_fin.md` for Finnish instructions.
 
+Need an automated Codex run? Supply your command via `--codex-cmd` (and optionally `--codex-cd` to point at the project root):
+
+```bash
+./pair_stream.sh start --mode advanced --demo \
+  --codex-cd "$PWD" \
+  --codex-cmd "codex exec --cd '$PWD' --dangerously-bypass-approvals-and-sandbox -m gpt-4.1 '<prompt>'"
+```
+
+Without `--codex-cmd`, the advisor pane stays interactive so you can start Codex manually; `--codex-stub` restores the built-in regex helper.
+
 ## Contributing
 
 1. Fork the repo, create a branch, and align with the manuals (ensure no suffixed chunk filenames, panels correctly named).
 2. If you update the stream spec or scripts, mirror the change in both manuals.
 3. Run through `manual_test.sh --clean` to confirm the flow remains intact.
 4. Submit a PR detailing implemented features vs planned TODOs.
-

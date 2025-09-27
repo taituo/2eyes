@@ -39,6 +39,16 @@ tmux list-windows -t pair
 tmux list-windows -t pair
 ./pair_stream.sh stop
 
+# valinnainen: suorita Codex CLI automaattisesti (korvaa omalla komennolla)
+# ./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" \
+#   --codex-cd "$PS_WORKDIR" \
+#   --codex-cmd "codex exec --cd '$PS_WORKDIR' --dangerously-bypass-approvals-and-sandbox -m gpt-4.1 '<prompt>'"
+# ./pair_stream.sh stop
+# valinnainen: käytä sisäänrakennettua advisor-stubia interaktiivisen sijaan
+./pair_stream.sh start --mode advanced --demo --dir "$STREAM_DIR" --out "$OUT_DIR" --codex-stub
+tmux list-windows -t pair
+./pair_stream.sh stop
+
 # 5. Backendien valinta
 command -v rotatelogs
 ./pair_stream.sh start --mode basic --demo --dir "$STREAM_DIR" --out "$OUT_DIR" -b rotatelogs

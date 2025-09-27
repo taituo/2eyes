@@ -13,6 +13,9 @@ CMD="${CMD-}"
 DEMO=${DEMO:-0}
 BACKEND="${BACKEND:-auto}"        # auto | rotatelogs | python
 SCRIPTS_DIR="${SCRIPTS_DIR:-$HOME/pair/scripts}"
+CODEX_MODE="shell"                # shell | stub | cmd
+CODEX_CMD=""
+CODEX_CD="$PWD"
 
 usage() {
   cat <<EOF
@@ -56,6 +59,9 @@ while [[ $# -gt 0 ]]; do
     -c|--cmd) CMD="$2"; shift 2 ;;
     --demo) DEMO=1; shift ;;
     -b|--backend) BACKEND="$2"; shift 2 ;;
+    --codex-cmd) CODEX_MODE="cmd"; CODEX_CMD="$2"; shift 2 ;;
+    --codex-cd) CODEX_CD="$2"; shift 2 ;;
+    --codex-stub) CODEX_MODE="stub"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1"; usage; exit 1 ;;
   esac
@@ -184,6 +190,7 @@ PY
 start_session() {
   need tmux || { echo "Missing dependency: tmux"; exit 1; }
   mkdir -p "$STREAM_DIR" "$OUT_DIR" "$SCRIPTS_DIR"
+  touch "$OUT_DIR/solutions.log"
   write_spec
 
   # varmista backend
@@ -233,13 +240,35 @@ start_session() {
   fi
 
   if [[ "$MODE" == "advanced" ]]; then
-    ensure_codex
     tmux new-window -t "$SESSION" -n "Advisor Panel"
-    tmux send-keys -t "$SESSION":"Advisor Panel" "export STREAM_DIR='$STREAM_DIR' OUT_DIR='$OUT_DIR' LATEST='${LATEST:-latest.log}'; $SCRIPTS_DIR/codex_reader.py" C-m
-    tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Reader"
     tmux split-window -v -t "$SESSION":"Advisor Panel"
+
+    tmux set-environment -t "$SESSION" STREAM_DIR "$STREAM_DIR"
+    tmux set-environment -t "$SESSION" OUT_DIR "$OUT_DIR"
+    tmux set-environment -t "$SESSION" LATEST "${LATEST:-latest.log}"
+
+    printf -v codex_cd_cmd 'cd %q' "$CODEX_CD"
+
+    case "$CODEX_MODE" in
+      stub)
+        ensure_codex
+        tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Stub"
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$SCRIPTS_DIR/codex_reader.py" C-m
+        ;;
+      cmd)
+        tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Codex Command"
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$codex_cd_cmd" C-m
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$CODEX_CMD" C-m
+        ;;
+      *)
+        tmux select-pane -t "$SESSION":"Advisor Panel".0 -T "Advisor Console"
+        tmux send-keys -t "$SESSION":"Advisor Panel".0 "$codex_cd_cmd" C-m
+        ;;
+    esac
+
     tmux select-pane -t "$SESSION":"Advisor Panel".1 -T "Advisor Log"
-    tmux send-keys -t "$SESSION":"Advisor Panel".1 "tail -F $OUT_DIR/solutions.log" C-m
+    printf -v tail_cmd 'tail -F %q' "$OUT_DIR/solutions.log"
+    tmux send-keys -t "$SESSION":"Advisor Panel".1 "$tail_cmd" C-m
   fi
 
   echo "Started '$SESSION' (mode: $MODE, backend: $chosen)."
