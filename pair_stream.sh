@@ -127,11 +127,12 @@ EOF
 
 ensure_codex() {
   mkdir -p "$SCRIPTS_DIR" "$OUT_DIR"
-  # Luodaan kevyt codex_reader.py jos sitä ei ole.
-  if [[ ! -f "$SCRIPTS_DIR/codex_reader.py" ]]; then
-    cat > "$SCRIPTS_DIR/codex_reader.py" <<'PY'
+  cat > "$SCRIPTS_DIR/codex_reader.py" <<'PY'
 #!/usr/bin/env python3
-import time, os, re, glob, sys
+import time
+import os
+import re
+import glob
 from datetime import datetime
 from pathlib import Path
 
@@ -141,7 +142,8 @@ DEFAULT_OUT_DIR = str(HOME / "pair" / "out")
 
 STREAM_DIR = os.path.expanduser(os.environ.get("STREAM_DIR", DEFAULT_STREAM_DIR))
 OUT_DIR = os.path.expanduser(os.environ.get("OUT_DIR", DEFAULT_OUT_DIR))
-LATEST = os.path.join(STREAM_DIR, os.environ.get("LATEST", "latest.log"))
+LATEST_NAME = os.environ.get("LATEST", "latest.log")
+LATEST = os.path.join(STREAM_DIR, LATEST_NAME) if LATEST_NAME else ""
 OUT_SOL = os.path.join(OUT_DIR, "solutions.log")
 
 RULES = [
@@ -157,34 +159,69 @@ RULES = [
      "Komento/polku puuttuu → täysi polku tai asenna binääri; tarkista PATH."),
 ]
 
+
 def log(msg):
     ts = datetime.now().strftime("%F %T")
     os.makedirs(OUT_DIR, exist_ok=True)
-    with open(OUT_SOL, "a") as f:
-        f.write(f"[{ts}] {msg}\n")
+    with open(OUT_SOL, "a", encoding="utf-8") as fh:
+        fh.write(f"[{ts}] {msg}\n")
 
-def tail_latest():
-    # jos latest ei ole symlinkki, valitse uusin pala
-    path = LATEST if os.path.exists(LATEST) else sorted(glob.glob(os.path.join(STREAM_DIR,"stream-*.log")))[-1]
-    with open(path, "r", errors="ignore") as f:
-        f.seek(0,2)
-        log(f"Codex käynnissä; seuraan: {os.path.basename(path)}")
+
+def resolve_path():
+    if LATEST and os.path.exists(LATEST):
+        return LATEST
+    candidates = sorted(glob.glob(os.path.join(STREAM_DIR, "stream-*.log")))
+    return candidates[-1] if candidates else None
+
+
+def tail():
+    current_path = None
+    file_handle = None
+    log("Codex stub käynnistyy")
+
+    try:
         while True:
-            line = f.readline()
+            target = resolve_path()
+            if not target:
+                time.sleep(0.5)
+                continue
+
+            if target != current_path:
+                if file_handle:
+                    file_handle.close()
+                    file_handle = None
+                try:
+                    file_handle = open(target, "r", errors="ignore")
+                except FileNotFoundError:
+                    current_path = None
+                    time.sleep(0.5)
+                    continue
+                current_path = target
+                file_handle.seek(0, os.SEEK_END)
+                log(f"Codex stub seuraa: {os.path.basename(target)}")
+
+            line = file_handle.readline()
             if not line:
-                time.sleep(0.2); continue
+                if not os.path.exists(current_path):
+                    current_path = None
+                    continue
+                time.sleep(0.2)
+                continue
+
             for rx, tip in RULES:
                 if rx.search(line):
                     log(f"⚠︎ {tip}\n   ↳ {line.strip()}")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if file_handle:
+            file_handle.close()
+
 
 if __name__ == "__main__":
-    try:
-        tail_latest()
-    except KeyboardInterrupt:
-        sys.exit(0)
+    tail()
 PY
-    chmod +x "$SCRIPTS_DIR/codex_reader.py"
-  fi
+  chmod +x "$SCRIPTS_DIR/codex_reader.py"
 }
 
 start_session() {
